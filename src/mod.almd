@@ -1,0 +1,63 @@
+// fizz_thinking_cue_detector — 発話中の「考えるモーション」発火判定。
+//
+// 責務 (一行): いま再生する文が思考モーションを出すべきかを判定する。
+//
+// 重要な不変条件 (memory: thinking モーションは発話中のみ):
+//   thinking モーションは **AI が実際に発話している区間でのみ** 出す。
+//   idle 中 / LLM 応答待ち / wait-screen 中には絶対に出さない。
+//   ⇒ この判定は必ず「再生する SentenceFragment」を入力に取る。
+//      時間の埋め合わせや idle ローテーションからは決して呼ばない。
+//
+// トリガは 2 つ:
+//   1. LLM が文に [fx:thinking] を付けた (fragment.fx == "thinking") ← 正攻法
+//   2. 文中に「うーん」「えーと」等の思考の言い淀みが含まれる ← 補助
+//
+// 入力 → 出力: fizz_protocol.speak.SentenceFragment → Bool
+
+import fizz_protocol.speak
+import fizz_protocol.emotion
+
+// 発話中の思考の言い淀み。
+let THINKING_CUES: List[String] = [
+  "うーん", "うーーん", "ううん", "んー", "んーー",
+  "えーと", "えーっと", "ええと", "えっと",
+  "あー", "あーっと", "そうだなあ", "そうだなー",
+  "なんだろう", "なんだろ", "どうだろう", "どうだろ", "そうですね",
+]
+
+// LLM が明示した思考タグ。
+local fn has_thinking_fx(f: speak.SentenceFragment) -> Bool =
+  match f.fx {
+    some(name) => string.to_lower(string.trim(name)) == "thinking",
+    none       => false,
+  }
+
+local fn has_cue_word(text: String) -> Bool =
+  list.fold(THINKING_CUES, false, (hit, cue) => hit or string.contains(text, cue))
+
+// この文の再生中に thinking モーションを出すべきか。
+fn should_play_thinking(f: speak.SentenceFragment) -> Bool =
+  has_thinking_fx(f) or has_cue_word(f.message)
+
+// ── in-file tests ────────────────────────────────────────────────────
+
+local fn frag(msg: String, fx: Option[String]) -> speak.SentenceFragment =
+  speak.SentenceFragment { emotion: emotion.Neutral, message: msg, hair: none, fx: fx }
+
+test "explicit [fx:thinking] triggers" {
+  assert(should_play_thinking(frag("どうしようかな。", some("thinking"))))
+}
+
+test "thinking interjections trigger" {
+  assert(should_play_thinking(frag("うーん、それは難しいなあ。", none)))
+  assert(should_play_thinking(frag("えーっと、たぶんね。", none)))
+}
+
+test "plain speech does not trigger" {
+  assert(not should_play_thinking(frag("こんにちは！", none)))
+  assert(not should_play_thinking(frag("ありがとう！", some("nod"))))
+}
+
+test "fx other than thinking does not trigger on its own" {
+  assert(not should_play_thinking(frag("やったー！", some("banzai"))))
+}

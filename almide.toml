@@ -1,0 +1,7 @@
+[package]
+name = "fizz_thinking_cue_detector"
+version = "0.1.0"
+description = "Fizz brain — decide if a spoken sentence should trigger the thinking motion (speech-only). SentenceFragment -> Bool"
+
+[dependencies]
+fizz_protocol = { git = "https://github.com/Aid-On/fizz-protocol", tag = "v0.2.0" }
