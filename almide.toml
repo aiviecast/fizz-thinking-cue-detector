@@ -4,4 +4,4 @@ version = "0.1.0"
 description = "Fizz brain — decide if a spoken sentence should trigger the thinking motion (speech-only). SentenceFragment -> Bool"
 
 [dependencies]
-fizz_protocol = { git = "https://github.com/aiviecast/fizz-protocol", tag = "v0.2.0" }
+fizz_protocol = { git = "https://github.com/aiviecast/fizz-protocol", tag = "v0.2.2" }
